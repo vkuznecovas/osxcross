@@ -131,6 +131,7 @@ if [ $f_res -eq 1 ]; then
     pushd build &>/dev/null
 
     CC=$(xcrun -f clang) CXX=$(xcrun -f clang++) $CMAKE .. \
+      -DCOMPILER_RT_BUILD_SANITIZERS=OFF -DCOMPILER_RT_BUILD_XRAY=OFF \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_SYSTEM_NAME=Darwin \
       -DCMAKE_LIPO=$(xcrun -f lipo) \
@@ -140,6 +141,27 @@ if [ $f_res -eq 1 ]; then
     $MAKE -j $JOBS $EXTRA_MAKE_FLAGS
 
     popd &>/dev/null
+
+    mkdir buildAArch64
+    pushd buildAArch64 &>/dev/null
+
+    CC="$(xcrun -f clang) -arch arm64" CXX="$(xcrun -f clang++) -arch arm64" $CMAKE .. \
+      -DDARWIN_osx_ARCHS=arm64 \
+      -DDARWIN_osx_BUILTIN_ARCHS=arm64 \
+      -DCOMPILER_RT_BUILD_SANITIZERS=OFF -DCOMPILER_RT_BUILD_XRAY=OFF \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_SYSTEM_NAME=Darwin \
+      -DCMAKE_LIPO=$(xcrun -f lipo) \
+      -DCMAKE_OSX_SYSROOT=$(xcrun --show-sdk-path) \
+      -DCMAKE_AR=$(xcrun -f ar)
+
+    $MAKE -j $JOBS $EXTRA_MAKE_FLAGS
+
+    popd &>/dev/null
+
+    for f in $(ls build/lib/darwin/); do
+        lipo -create build/lib/darwin/$f buildAArch64/lib/darwin/$f -output build/lib/darwin/$f.new && rm build/lib/darwin/$f && mv build/lib/darwin/$f.new build/lib/darwin/$f
+    done
 
     ### CMAKE END ###
 
